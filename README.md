@@ -37,7 +37,7 @@ pip install langchain pydantic python-dotenv
 - Open *PyCharm* or another Python IDE and choose the *Open an Existing Project* option. Navigate to the cloned repository and select it.
 - Set up API Keys
     
-    Create a file named `.env in the root directory of the project(if it doesn't already exist) and add the following keys: 
+    Create a file named `.env` in the root directory of the project and add the following keys: 
 
 ```env
 # OpenAI API Key
