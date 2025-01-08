@@ -43,7 +43,7 @@ pip install langchain pydantic python-dotenv
 # OpenAI API Key
 OPENAI_API_KEY=your_openai_api_key
 ```
--Run the script
+- Run the script
 ```bash
   python script.py
 ```
