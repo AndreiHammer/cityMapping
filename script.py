@@ -14,6 +14,7 @@ load_dotenv()
 class Document(BaseModel):
     city: str = Field(description="City Name")
     code: str = Field(description="IATA Code")
+    country: str = Field(description="Country")
 
 
 llm = ChatOpenAI(api_key=os.getenv("OPENAI_API_KEY"), temperature=0)
@@ -26,22 +27,22 @@ def load_pdf(file_path: str):
     return [page.page_content for page in pages]
 
 
-# Prompt for the LLM
+# Update the prompt template to include country
 prompt = PromptTemplate(
     template=(
         "You are a data extractor specialized in IATA city codes. The following text contains a table with IATA city "
         "codes."
         "The table has multiple columns with the format: Code, City Name, State, Country, repeated several times "
         "across the page."
-        "Extract ALL city-code pairs in the text. For each pair, output a single line in the format: 'City Name: "
+        "Extract ALL city-code pairs in the text. For each pair, output a single line in the format: 'City Name, Country: "
         "IATA_CODE'"
         "(where IATA_CODE is the 3-letter code). "
-        "Be thorough and extract EVERY single city-code pair in the text, even if there are hundreds. "
-        "Do not skip any entries. Ensure the city name comes first, followed by the code. "
+        "Be thorough and extract EVERY single city-code-country triplet in the text, even if there are hundreds. "
+        "Do not skip any entries. Ensure the city name comes first, followed by the country, then the code. "
         "Example output format:\n"
-        "New York: NYC\n"
-        "London: LON\n"
-        "Paris: CDG\n"
+        "New York, USA: NYC\n"
+        "London, UK: LON\n"
+        "Paris, France: PAR\n"
         "\n{context}"
     ),
     input_variables=["context"],
@@ -56,33 +57,36 @@ def preprocess_pdf_content(content):
 
 
 # Function to parse the LLM output into a dictionary
+# Update the parse_llm_output function to include country
 def parse_llm_output(output_text):
     results = {}
-    # Look for lines in the format "City Name: CODE"
-    pattern = r'([^:]+):\s*([A-Z]{3})'
+    # Look for lines in the format "City Name, Country: CODE"
+    pattern = r'([^,]+),\s*([^:]+):\s*([A-Z]{3})'
     matches = re.findall(pattern, output_text)
 
-    for city, code in matches:
+    for city, country, code in matches:
         city = city.strip()
+        country = country.strip()
         code = code.strip()
         if city and code and len(code) == 3 and code.isalpha():
-            results[city] = code
+            if city not in results:
+                results[city] = {"code": code, "country": country}
 
     return results
 
 
-# Function to directly extract city-code pairs from the PDF content
 def extract_from_raw_content(content):
     results = {}
-    # Pattern to match 3-letter code followed by city name
-    # This pattern looks for 3 uppercase letters followed by a city name
-    pattern = r'([A-Z]{3})\s+([A-Za-z\s\-\'\.]+?)(?:\s+[A-Z]{2}\s+|\s+[A-Z]{2}$|\s+[A-Z]{1,2}$)'
+    # Pattern to match 3-letter code, city name, and country
+    pattern = r'([A-Z]{3})\s+([A-Za-z\s\-\'\.]+?)\s+([A-Z]{2})\s+([A-Za-z\s\-\'\.]+)'
     matches = re.findall(pattern, content)
 
-    for code, city in matches:
+    for code, city, state, country in matches:
         city = city.strip()
+        country = country.strip()
         if city and code and len(code) == 3 and code.isalpha():
-            results[city] = code
+            if city not in results:
+                results[city] = {"code": code, "country": country}
 
     return results
 
